@@ -1,0 +1,31 @@
+# Dépendances
+node_modules/
+
+# Artefacts de build
+dist/
+build/
+*.tsbuildinfo
+
+# Configuration locale — contient le client secret Spotify
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Couverture de tests
+coverage/
+
+# Éditeurs et OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Journaux d exécution
+logs/
+
+# Données applicatives locales (mémoire de qualification hors conteneur)
+data/

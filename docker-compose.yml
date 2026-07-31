@@ -1,0 +1,62 @@
+# ==============================================================================
+# Overtify — orchestration des services
+#
+# Deux services seulement : le backend Node (OAuth + proxy Spotify) et le
+# frontend servi par Nginx. Aucune base de données : les sessions vivent en
+# mémoire dans le backend (cf. docs/ARCHITECTURE.md).
+# ==============================================================================
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: overtify-backend:latest
+    container_name: overtify-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      HOST: 0.0.0.0
+      SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:?SPOTIFY_CLIENT_ID est requis, voir .env.example}
+      SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET:?SPOTIFY_CLIENT_SECRET est requis, voir .env.example}
+      SPOTIFY_REDIRECT_URI: ${SPOTIFY_REDIRECT_URI:-http://127.0.0.1:8080/api/auth/callback}
+      FRONTEND_URL: ${FRONTEND_URL:-http://127.0.0.1:8080}
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET est requis, voir .env.example}
+      SPOTIFY_LOG_FILE: ${SPOTIFY_LOG_FILE:-}
+      OVERTIFY_DATA_DIR: /app/data
+    # Aucun port publié : le backend n'est joignable que par le frontend, via
+    # le réseau interne. Cela réduit la surface exposée sur la machine hôte.
+    expose:
+      - '3001'
+    volumes:
+      # Journal des échanges Spotify, lisible depuis la machine hôte
+      # (cf. make logs-api). Vide tant que SPOTIFY_LOG_FILE n'est pas défini.
+      - ./logs:/app/logs
+      # Mémoire de qualification des titres likés : doit survivre aux
+      # redémarrages et aux reconstructions d'image.
+      - overtify-data:/app/data
+    networks:
+      - overtify
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: overtify-frontend:latest
+    container_name: overtify-frontend
+    restart: unless-stopped
+    ports:
+      - '${FRONTEND_PORT:-8080}:80'
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - overtify
+
+volumes:
+  overtify-data:
+
+networks:
+  overtify:
+    driver: bridge

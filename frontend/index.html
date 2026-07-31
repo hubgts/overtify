@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <meta
+      name="description"
+      content="Overtify — surcouche Spotify pour trier vos titres likés, organiser vos playlists et éliminer les doublons."
+    />
+    <!--
+      Le SVG est préféré quand il est géré (net à toute taille) ; le PNG et
+      l'ICO servent de repli, notamment pour Safari qui ignore les favicons SVG.
+      Couleur alignée sur --color-accent (src/styles/theme.css).
+    -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="alternate icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#a855f7" />
+
+    <title>Overtify</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
