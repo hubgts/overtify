@@ -105,7 +105,7 @@ librement entre les modes.)
 ### Tests
 
 ```bash
-make test           # 179 tests hors ligne : unitaires + bout en bout
+make test           # 183 tests hors ligne : unitaires + bout en bout
 make test-contract  # vérifie la vraie API Spotify (réseau requis)
 ```
 

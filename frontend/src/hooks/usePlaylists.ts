@@ -72,12 +72,16 @@ export function useRemoveTracks(playlistId: string) {
   });
 }
 
-/** Playlists retirées de la bibliothèque, affichées grisées. */
-export function useRemovedPlaylists(enabled: boolean): UseQueryResult<RemovedPlaylistDto[]> {
+/**
+ * Playlists retirées de la bibliothèque, affichées grisées.
+ *
+ * Pas de drapeau `enabled` : le composant qui l'appelle n'existe que dans la
+ * barre latérale, donc uniquement une fois connecté.
+ */
+export function useRemovedPlaylists(): UseQueryResult<RemovedPlaylistDto[]> {
   return useQuery({
     queryKey: queryKeys.removedPlaylists,
     queryFn: ({ signal }) => playlistApi.listRemoved(signal),
-    enabled,
     staleTime: 60 * 1000,
   });
 }

@@ -168,7 +168,7 @@ Choix assumé, documenté dans
 ## Tests
 
 ```bash
-npm test              # 107 tests hors ligne
+npm test              # 111 tests hors ligne
 npm run test:contract # vérifie que l'API Spotify n'a pas changé
 ```
 

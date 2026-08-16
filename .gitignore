@@ -6,6 +6,13 @@ dist/
 build/
 *.tsbuildinfo
 
+# JavaScript compilé égaré dans les sources : un `tsc` sans --noEmit en produit
+# à côté des .ts, ce qui fait exécuter chaque test en double.
+frontend/src/**/*.js
+frontend/src/**/*.js.map
+backend/src/**/*.js
+backend/src/**/*.js.map
+
 # Configuration locale — contient le client secret Spotify
 .env
 .env.local

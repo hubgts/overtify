@@ -6,17 +6,13 @@ import {
   createPlaylist,
   getOwnedPlaylistDetail,
   listOwnedPlaylists,
+  listRemovedPlaylists,
   removePlaylistFromLibrary,
   removeTracksFromPlaylist,
   restorePlaylistToLibrary,
   searchTracks,
   updatePlaylist,
 } from '../services/playlistService.js';
-import {
-  forgetRemoved,
-  listRemoved,
-  rememberRemoved,
-} from '../services/removedPlaylistStore.js';
 import { SPOTIFY_MAX_TRACKS_PER_REQUEST } from '../config/spotify.js';
 import { ValidationError } from '../utils/errors.js';
 import { playlistOrLikedIdSchema, trackUriSchema } from './schemas.js';
@@ -180,26 +176,14 @@ export async function playlistRoutes(fastify: FastifyInstance): Promise<void> {
       throw new ValidationError('Les Titres likés ne peuvent pas être retirés.');
     }
 
-    const removed = await removePlaylistFromLibrary(
-      request.spotify,
-      playlistId,
-      request.session.userId,
-    );
-
-    await rememberRemoved(request.session.userId, {
-      id: removed.id,
-      name: removed.name,
-      imageUrl: removed.imageUrl,
-      trackCount: removed.trackCount,
-      removedAt: new Date().toISOString(),
-    });
+    await removePlaylistFromLibrary(request.spotify, playlistId, request.session.userId);
 
     return reply.status(204).send();
   });
 
   /** Playlists retirées, affichées grisées et restaurables. */
   fastify.get('/api/playlists/removed', async (request): Promise<RemovedPlaylistDto[]> => {
-    return listRemoved(request.session.userId);
+    return listRemovedPlaylists(request.session.userId);
   });
 
   /** Réaffiche une playlist retirée en s'y réabonnant. */
@@ -207,7 +191,6 @@ export async function playlistRoutes(fastify: FastifyInstance): Promise<void> {
     const { playlistId } = playlistParamsSchema.parse(request.params);
 
     await restorePlaylistToLibrary(request.spotify, playlistId, request.session.userId);
-    await forgetRemoved(request.session.userId, playlistId);
 
     return reply.status(204).send();
   });

@@ -72,6 +72,8 @@ Vérifié à plusieurs reprises sur ce projet :
 | Compteur sous `tracks.total` | Souvent sous `items` dans `/me/playlists` |
 | Piste sous `item.track` | Sous `item.item` ; `track` est déprécié |
 | `localhost` en Redirect URI | Refusé depuis avril 2025 — utiliser `127.0.0.1` |
+| Corps JSON sur toute réponse 200 | **Vide** sur plusieurs mutations (désabonnement, édition) |
+| Description absente = `null` | Spotify stocke la **chaîne** `"null"` et la renvoie telle quelle |
 
 **En cas de comportement inexpliqué, lire la réponse brute avant de supposer :**
 
@@ -146,8 +148,15 @@ La **bibliothèque** (`/api/library`) indexe « quel morceau est où ». Coûteu
 construire (~25 requêtes), elle est mise en cache et invalidée après chaque
 mutation réussie. **L'invalidation est portée par les fonctions de mutation
 elles-mêmes** (`addTracksToPlaylist`, `removeTracksFromPlaylist`,
-`addLikedSongs`, `removeLikedSongs`, `syncTrackMembership`) : une nouvelle
-route mutante hérite donc du comportement sans rien à retenir.
+`addLikedSongs`, `removeLikedSongs`, `syncTrackMembership`, `createPlaylist`,
+`updatePlaylist`, `removePlaylistFromLibrary`, `restorePlaylistToLibrary`) :
+une nouvelle route mutante hérite donc du comportement sans rien à retenir.
+
+Même règle pour la mémoire des playlists retirées : `removePlaylistFromLibrary`
+et `restorePlaylistToLibrary` tiennent eux-mêmes la corbeille à jour. Un second
+chemin de désabonnement qui l'oublierait rendrait la playlist invisible *et*
+irrécupérable. Les routes de playlists n'accèdent donc à aucun store
+directement, elles passent par le service.
 
 Côté frontend, le pendant est `useInvalidateLibraryData()` : toutes les
 mutations passent par lui plutôt que d'énumérer les clés à invalider.

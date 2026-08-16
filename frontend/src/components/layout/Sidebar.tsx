@@ -4,7 +4,8 @@ import { ActionMenu } from '../ui/ActionMenu';
 import { Button } from '../ui/Button';
 import { LoadingBlock } from '../ui/Spinner';
 import { InlineError } from '../ui/ErrorState';
-import type { PlaylistSummaryDto, RemovedPlaylistDto } from '../../types/api';
+import { RemovedPlaylists } from './RemovedPlaylists';
+import type { PlaylistSummaryDto } from '../../types/api';
 
 interface SidebarProps {
   playlists: PlaylistSummaryDto[] | undefined;
@@ -16,10 +17,6 @@ interface SidebarProps {
   onCreatePlaylist: () => void;
   onEditPlaylist: (playlist: PlaylistSummaryDto) => void;
   onRemovePlaylist: (playlist: PlaylistSummaryDto) => void;
-  /** Playlists retirées, affichées grisées et restaurables. */
-  removedPlaylists: RemovedPlaylistDto[];
-  onRestorePlaylist: (playlistId: string) => void;
-  restoringPlaylistId: string | null;
   isLoading: boolean;
   error: unknown;
 }
@@ -40,9 +37,6 @@ export function Sidebar({
   onCreatePlaylist,
   onEditPlaylist,
   onRemovePlaylist,
-  removedPlaylists,
-  onRestorePlaylist,
-  restoringPlaylistId,
   isLoading,
   error,
 }: SidebarProps) {
@@ -120,13 +114,7 @@ export function Sidebar({
             ))}
           </ul>
 
-          {removedPlaylists.length > 0 && (
-            <RemovedSection
-              playlists={removedPlaylists}
-              onRestore={onRestorePlaylist}
-              restoringPlaylistId={restoringPlaylistId}
-            />
-          )}
+          <RemovedPlaylists />
         </div>
       </div>
     </nav>
@@ -174,64 +162,6 @@ function ToolButton({ icon, label, description, isActive, onClick }: ToolButtonP
   );
 }
 
-/**
- * Section des playlists retirées.
- *
- * Affichées grisées plutôt que masquées : le retrait étant réversible, les
- * cacher donnerait l'impression d'une suppression définitive.
- */
-function RemovedSection({
-  playlists,
-  onRestore,
-  restoringPlaylistId,
-}: {
-  playlists: RemovedPlaylistDto[];
-  onRestore: (playlistId: string) => void;
-  restoringPlaylistId: string | null;
-}) {
-  return (
-    <section className="mt-4 border-t border-white/5 pt-3">
-      <h3 className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-content-muted">
-        Playlists retirées
-      </h3>
-
-      <ul>
-        {playlists.map((playlist) => (
-          <li
-            key={playlist.id}
-            className="flex items-center gap-3 rounded-md p-2 opacity-60 transition-opacity hover:opacity-100"
-          >
-            <span
-              aria-hidden="true"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-surface-active text-content-muted"
-            >
-              ♪
-            </span>
-
-            <span className="min-w-0 flex-1">
-              <span className="block truncate-line text-sm text-content-secondary line-through">
-                {playlist.name}
-              </span>
-              <span className="block truncate-line text-xs text-content-muted">
-                {formatTrackCount(playlist.trackCount)}
-              </span>
-            </span>
-
-            <button
-              type="button"
-              onClick={() => onRestore(playlist.id)}
-              disabled={restoringPlaylistId === playlist.id}
-              className="shrink-0 rounded-pill px-2 py-1 text-[11px] text-content-secondary transition-colors hover:bg-surface-active hover:text-accent disabled:opacity-50"
-            >
-              {restoringPlaylistId === playlist.id ? '…' : 'Restaurer'}
-            </button>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
 interface PlaylistSidebarItemProps {
   playlist: PlaylistSummaryDto;
   isSelected: boolean;
@@ -252,35 +182,35 @@ function PlaylistSidebarItem({
 
   return (
     <div
-      className={`group flex w-full items-center gap-1 rounded-md pr-1 transition-colors ${
+      className={`flex w-full items-center gap-1 rounded-md pr-1 transition-colors ${
         isSelected ? 'bg-surface-active' : 'hover:bg-surface-hover'
       }`}
     >
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-current={isSelected ? 'true' : undefined}
-      className="flex min-w-0 flex-1 items-center gap-3 rounded-md p-2 text-left"
-    >
-      <PlaylistCover
-        imageUrl={playlist.imageUrl}
-        name={playlist.name}
-        isLikedSongs={isLikedSongs(playlist.id)}
-      />
+      <button
+        type="button"
+        onClick={onSelect}
+        aria-current={isSelected ? 'true' : undefined}
+        className="flex min-w-0 flex-1 items-center gap-3 rounded-md p-2 text-left"
+      >
+        <PlaylistCover
+          imageUrl={playlist.imageUrl}
+          name={playlist.name}
+          isLikedSongs={isLikedSongs(playlist.id)}
+        />
 
-      <span className="min-w-0 flex-1">
-        <span
-          className={`block truncate-line text-sm font-medium ${
-            isSelected ? 'text-accent' : 'text-content-primary'
-          }`}
-        >
-          {playlist.name}
+        <span className="min-w-0 flex-1">
+          <span
+            className={`block truncate-line text-sm font-medium ${
+              isSelected ? 'text-accent' : 'text-content-primary'
+            }`}
+          >
+            {playlist.name}
+          </span>
+          <span className="block truncate-line text-xs text-content-secondary">
+            {formatTrackCount(playlist.trackCount)}
+          </span>
         </span>
-        <span className="block truncate-line text-xs text-content-secondary">
-          {formatTrackCount(playlist.trackCount)}
-        </span>
-      </span>
-    </button>
+      </button>
 
       {isEditable && (
         <ActionMenu

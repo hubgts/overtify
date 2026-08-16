@@ -106,6 +106,23 @@ function extractTrackCount(playlist: SpotifyPlaylist): number {
 }
 
 /**
+ * Normalise la description d'une playlist.
+ *
+ * Spotify stocke littéralement la chaîne `"null"` quand une playlist est créée
+ * sans description — et la renvoie telle quelle, ce qui l'affichait sous le
+ * titre. Une chaîne vide est traitée de la même façon : absence de description.
+ */
+function normalizeDescription(description: string | null | undefined): string | null {
+  if (description === null || description === undefined) {
+    return null;
+  }
+
+  const trimmed = description.trim();
+
+  return trimmed === '' || trimmed === 'null' ? null : trimmed;
+}
+
+/**
  * Convertit une playlist Spotify en résumé.
  *
  * Les champs facultatifs (pochette, description) tolèrent l'absence ; les
@@ -116,7 +133,7 @@ export function toPlaylistSummaryDto(playlist: SpotifyPlaylist): PlaylistSummary
   return {
     id: playlist.id,
     name: playlist.name,
-    description: playlist.description ?? null,
+    description: normalizeDescription(playlist.description),
     imageUrl: pickImageUrl(playlist.images, DISPLAY_SIZES.thumbnail),
     trackCount: extractTrackCount(playlist),
     isPublic: playlist.public ?? null,

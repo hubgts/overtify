@@ -123,6 +123,14 @@ export class SpotifyClient {
       ...(options.body === undefined ? {} : { requestBody: options.body }),
     });
 
+    // Un corps vide n'est pas réservé au 204 : Spotify répond 200 sans
+    // contenu sur plusieurs mutations (désabonnement d'une playlist,
+    // modification de ses métadonnées). Tenter de le parser levait une
+    // SyntaxError remontée à l'utilisateur en « erreur interne ».
+    if (rawBody.trim() === '') {
+      return undefined as T;
+    }
+
     return JSON.parse(rawBody) as T;
   }
 

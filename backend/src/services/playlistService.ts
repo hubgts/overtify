@@ -6,6 +6,7 @@ import {
 import { ForbiddenError, ValidationError } from '../utils/errors.js';
 import { chunk } from '../utils/chunk.js';
 import { libraryCache } from './libraryCache.js';
+import { forgetRemoved, listRemoved, rememberRemoved } from './removedPlaylistStore.js';
 import {
   pickCoverImageUrl,
   toPlaylistSummaryDto,
@@ -22,6 +23,7 @@ import type {
 import type {
   PlaylistDetailDto,
   PlaylistSummaryDto,
+  RemovedPlaylistDto,
   SearchResultDto,
   SnapshotDto,
   TrackRemovalDto,
@@ -110,7 +112,7 @@ export async function getOwnedPlaylistDetail(
   return {
     id: playlist.id,
     name: playlist.name,
-    description: playlist.description ?? null,
+    description: toPlaylistSummaryDto(playlist).description,
     imageUrl: pickCoverImageUrl(playlist.images),
     ownerName: playlist.owner?.display_name ?? playlist.owner?.id ?? 'Inconnu',
     snapshotId: playlist.snapshot_id,
@@ -241,7 +243,11 @@ export async function createPlaylist(
     path: '/me/playlists',
     body: {
       name: input.name,
-      ...(input.description === undefined ? {} : { description: input.description }),
+      // Une description vide est omise plutôt qu'envoyée : Spotify la stocke
+      // alors littéralement sous la forme de la chaîne « null ».
+      ...(input.description === undefined || input.description === ''
+        ? {}
+        : { description: input.description }),
       // Spotify crée en public par défaut ; Overtify préfère l'inverse, une
       // playlist de tri n'ayant pas vocation à être exposée sans le vouloir.
       public: input.isPublic ?? false,
@@ -285,22 +291,33 @@ export async function updatePlaylist(
  * Spotify n'offre aucune suppression réelle : on se désabonne de sa propre
  * playlist, qui disparaît alors de `/me/playlists` tout en restant restaurable.
  * C'est pourquoi l'interface parle de « retrait » et non de « suppression ».
+ *
+ * La mémorisation du retrait appartient à la mutation, au même titre que
+ * l'invalidation du cache : une seconde voie de désabonnement qui l'oublierait
+ * rendrait la playlist invisible *et* irrécupérable.
  */
 export async function removePlaylistFromLibrary(
   client: SpotifyClient,
   playlistId: string,
   userId: string,
-): Promise<PlaylistSummaryDto> {
+): Promise<void> {
   const playlist = await assertOwnedPlaylist(client, playlistId, userId);
+  const summary = toPlaylistSummaryDto(playlist);
 
   await client.request<void>({
     method: 'DELETE',
     path: `/playlists/${playlistId}/followers`,
   });
 
-  libraryCache.invalidate(userId);
+  await rememberRemoved(userId, {
+    id: summary.id,
+    name: summary.name,
+    imageUrl: summary.imageUrl,
+    trackCount: summary.trackCount,
+    removedAt: new Date().toISOString(),
+  });
 
-  return toPlaylistSummaryDto(playlist);
+  libraryCache.invalidate(userId);
 }
 
 /** Réaffiche une playlist retirée en s'y réabonnant. */
@@ -315,5 +332,18 @@ export async function restorePlaylistToLibrary(
     body: { public: false },
   });
 
+  await forgetRemoved(userId, playlistId);
+
   libraryCache.invalidate(userId);
+}
+
+/**
+ * Playlists retirées, affichées grisées et restaurables.
+ *
+ * Passe par le service plutôt que d'exposer le store à la couche route : le
+ * type de retour est le contrat frontend, ce qui fait vérifier par le
+ * compilateur que la forme persistée reste compatible avec lui.
+ */
+export async function listRemovedPlaylists(userId: string): Promise<RemovedPlaylistDto[]> {
+  return listRemoved(userId);
 }

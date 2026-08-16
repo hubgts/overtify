@@ -181,3 +181,37 @@ describe('toPlaylistSummaryDto', () => {
     expect(toPlaylistSummaryDto(playlist).ownerName).toBe('moi');
   });
 });
+
+describe('normalisation de la description', () => {
+  function makePlaylist(description: string | null | undefined): SpotifyPlaylist {
+    return {
+      id: 'pl1',
+      name: 'P',
+      snapshot_id: 's',
+      owner: { id: 'moi', display_name: 'Moi' },
+      description,
+    } as SpotifyPlaylist;
+  }
+
+  /**
+   * Régression : créée sans description, Spotify stocke littéralement la
+   * chaîne « null » et la renvoie telle quelle — elle s'affichait sous le
+   * titre de la playlist.
+   */
+  it('traite la chaîne « null » comme une absence de description', () => {
+    expect(toPlaylistSummaryDto(makePlaylist('null')).description).toBeNull();
+  });
+
+  it('traite une chaîne vide comme une absence', () => {
+    expect(toPlaylistSummaryDto(makePlaylist('   ')).description).toBeNull();
+  });
+
+  it('conserve une description réelle', () => {
+    expect(toPlaylistSummaryDto(makePlaylist('Mes favoris')).description).toBe('Mes favoris');
+  });
+
+  it('accepte une description absente', () => {
+    expect(toPlaylistSummaryDto(makePlaylist(null)).description).toBeNull();
+    expect(toPlaylistSummaryDto(makePlaylist(undefined)).description).toBeNull();
+  });
+});

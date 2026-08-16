@@ -1,14 +1,8 @@
 import { useEffect, useState } from 'react';
 
 import { useAuth, useLogout } from './hooks/useAuth';
-import {
-  useCreatePlaylist,
-  usePlaylists,
-  useRemovePlaylist,
-  useRemovedPlaylists,
-  useRestorePlaylist,
-  useUpdatePlaylist,
-} from './hooks/usePlaylists';
+import { usePlaylists, useRemovePlaylist, useUpdatePlaylist } from './hooks/usePlaylists';
+import { CreatePlaylistModal } from './components/playlist/CreatePlaylistModal';
 import { PlaylistFormModal } from './components/playlist/PlaylistFormModal';
 import { RemovePlaylistModal } from './components/playlist/RemovePlaylistModal';
 import { Sidebar } from './components/layout/Sidebar';
@@ -55,12 +49,9 @@ export function App() {
   const [view, setView] = useState<'playlist' | 'qualify' | 'library'>('playlist');
 
   const playlistsQuery = usePlaylists(user !== null);
-  const removedQuery = useRemovedPlaylists(user !== null);
 
-  const createPlaylist = useCreatePlaylist();
   const updatePlaylist = useUpdatePlaylist();
   const removePlaylist = useRemovePlaylist();
-  const restorePlaylist = useRestorePlaylist();
 
   /** Modale ouverte : création, édition d'une playlist, ou retrait. */
   const [isCreateOpen, setCreateOpen] = useState(false);
@@ -102,9 +93,6 @@ export function App() {
         onCreatePlaylist={() => setCreateOpen(true)}
         onEditPlaylist={setPlaylistToEdit}
         onRemovePlaylist={setPlaylistToRemove}
-        removedPlaylists={removedQuery.data ?? []}
-        onRestorePlaylist={(playlistId) => restorePlaylist.mutate(playlistId)}
-        restoringPlaylistId={restorePlaylist.isPending ? restorePlaylist.variables : null}
         isLoading={playlistsQuery.isLoading}
         error={playlistsQuery.error}
       />
@@ -123,56 +111,42 @@ export function App() {
         )}
       </main>
 
-      <PlaylistFormModal
-        isOpen={isCreateOpen}
-        onClose={() => setCreateOpen(false)}
-        onSubmit={(values) => {
-          createPlaylist.mutate(
-            { name: values.name, ...(values.description === '' ? {} : { description: values.description }) },
-            {
-              onSuccess: (created) => {
-                setCreateOpen(false);
-                // On ouvre la playlist créée : elle est vide, l'utilisateur
-                // veut la remplir dans la foulée.
-                setSelectedPlaylistId(created.id);
-                setView('playlist');
+      {isCreateOpen && (
+        <CreatePlaylistModal
+          onClose={() => setCreateOpen(false)}
+          description="Elle sera créée vide et privée."
+          onCreated={(created) => {
+            // On ouvre la playlist créée : elle est vide, l'utilisateur veut
+            // la remplir dans la foulée.
+            setSelectedPlaylistId(created.id);
+            setView('playlist');
+          }}
+        />
+      )}
+
+      {playlistToEdit !== null && (
+        <PlaylistFormModal
+          onClose={() => setPlaylistToEdit(null)}
+          initialValues={{
+            name: playlistToEdit.name,
+            description: playlistToEdit.description ?? '',
+          }}
+          onSubmit={(values) => {
+            updatePlaylist.mutate(
+              {
+                playlistId: playlistToEdit.id,
+                changes: { name: values.name, description: values.description },
               },
-            },
-          );
-        }}
-        isPending={createPlaylist.isPending}
-        error={createPlaylist.error}
-        title="Nouvelle playlist"
-        description="Elle sera créée vide et privée."
-        submitLabel="Créer"
-      />
-
-      <PlaylistFormModal
-        isOpen={playlistToEdit !== null}
-        onClose={() => setPlaylistToEdit(null)}
-        initialValues={{
-          name: playlistToEdit?.name ?? '',
-          description: playlistToEdit?.description ?? '',
-        }}
-        onSubmit={(values) => {
-          if (playlistToEdit === null) {
-            return;
-          }
-
-          updatePlaylist.mutate(
-            {
-              playlistId: playlistToEdit.id,
-              changes: { name: values.name, description: values.description },
-            },
-            { onSuccess: () => setPlaylistToEdit(null) },
-          );
-        }}
-        isPending={updatePlaylist.isPending}
-        error={updatePlaylist.error}
-        title="Renommer la playlist"
-        description="Le nom et la description sont modifiés dans Spotify."
-        submitLabel="Enregistrer"
-      />
+              { onSuccess: () => setPlaylistToEdit(null) },
+            );
+          }}
+          isPending={updatePlaylist.isPending}
+          error={updatePlaylist.error}
+          title="Renommer la playlist"
+          description="Le nom et la description sont modifiés dans Spotify."
+          submitLabel="Enregistrer"
+        />
+      )}
 
       <RemovePlaylistModal
         playlist={playlistToRemove}

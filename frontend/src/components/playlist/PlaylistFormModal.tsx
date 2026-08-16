@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
@@ -10,10 +10,9 @@ export interface PlaylistFormValues {
 }
 
 interface PlaylistFormModalProps {
-  isOpen: boolean;
   onClose: () => void;
   /** Valeurs de départ : vides pour une création, remplies pour une édition. */
-  initialValues?: PlaylistFormValues;
+  initialValues: PlaylistFormValues;
   onSubmit: (values: PlaylistFormValues) => void;
   isPending: boolean;
   error: unknown;
@@ -28,9 +27,12 @@ interface PlaylistFormModalProps {
  *
  * Un seul composant pour les deux usages : ils partagent les mêmes champs et
  * les mêmes contraintes, seuls les libellés et les valeurs initiales diffèrent.
+ *
+ * Monté seulement pendant qu'il est ouvert : la saisie disparaît donc avec lui,
+ * là où un composant toujours monté demanderait de la réinitialiser à la main
+ * — source classique de formulaire rouvert sur les valeurs du précédent.
  */
 export function PlaylistFormModal({
-  isOpen,
   onClose,
   initialValues,
   onSubmit,
@@ -40,17 +42,8 @@ export function PlaylistFormModal({
   title,
   description,
 }: PlaylistFormModalProps) {
-  const [name, setName] = useState('');
-  const [descriptionValue, setDescriptionValue] = useState('');
-
-  // Réinitialise à chaque ouverture : rouvrir le formulaire ne doit pas
-  // conserver la saisie d'une playlist précédente.
-  useEffect(() => {
-    if (isOpen) {
-      setName(initialValues?.name ?? '');
-      setDescriptionValue(initialValues?.description ?? '');
-    }
-  }, [isOpen, initialValues?.name, initialValues?.description]);
+  const [name, setName] = useState(initialValues.name);
+  const [descriptionValue, setDescriptionValue] = useState(initialValues.description);
 
   const trimmedName = name.trim();
   const canSubmit = trimmedName !== '' && !isPending;
@@ -63,7 +56,7 @@ export function PlaylistFormModal({
 
   return (
     <Modal
-      isOpen={isOpen}
+      isOpen
       onClose={onClose}
       title={title}
       description={description}

@@ -161,7 +161,7 @@ export class SpotifyMock {
           playlist.name = parsed.name;
         }
 
-        return { statusCode: 200, data: {} };
+        return { statusCode: 200, data: '' };
       })
       .persist();
 
@@ -179,7 +179,9 @@ export class SpotifyMock {
           playlist.unfollowed = true;
         }
 
-        return { statusCode: 200, data: {} };
+        // Spotify répond 200 avec un corps VIDE : reproduire `{}` masquerait
+        // le crash de JSON.parse observé en production.
+        return { statusCode: 200, data: '' };
       })
       .persist();
 
@@ -195,7 +197,7 @@ export class SpotifyMock {
           playlist.unfollowed = false;
         }
 
-        return { statusCode: 200, data: {} };
+        return { statusCode: 200, data: '' };
       })
       .persist();
 
