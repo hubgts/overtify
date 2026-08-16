@@ -12,6 +12,9 @@ frontend/src/**/*.js
 frontend/src/**/*.js.map
 backend/src/**/*.js
 backend/src/**/*.js.map
+frontend/vite.config.js
+backend/vitest.config.js
+frontend/vitest.config.js
 
 # Configuration locale — contient le client secret Spotify
 .env
