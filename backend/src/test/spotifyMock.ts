@@ -29,6 +29,8 @@ export interface MockPlaylist {
   ownerId: string;
   snapshotId?: string;
   tracks: MockTrack[];
+  /** Désabonnée : absente de /me/playlists, mais toujours lisible par id. */
+  unfollowed?: boolean;
 }
 
 export interface MockState {
@@ -123,6 +125,80 @@ export class SpotifyMock {
   private registerApiRoutes(): void {
     const api = this.agent.get('https://api.spotify.com');
 
+    // --- CRUD playlists ---------------------------------------------------
+    api
+      .intercept({ path: /^\/v1\/me\/playlists$/, method: 'POST', body: () => true })
+      .reply(({ body }) => {
+        const parsed = JSON.parse(String(body)) as { name: string; public?: boolean };
+        this.record('POST', '/me/playlists', parsed);
+
+        const created = {
+          id: `new${String(this.state.playlists.length).padStart(19, '0')}`,
+          name: parsed.name,
+          ownerId: this.state.userId,
+          tracks: [],
+        };
+
+        this.state.playlists.push(created);
+        return { statusCode: 201, data: toApiPlaylist(created) };
+      })
+      .persist();
+
+    api
+      .intercept({ path: /^\/v1\/playlists\/[^/]+$/, method: 'PUT', body: () => true })
+      .reply(({ path, body }) => {
+        const playlistId = this.extractPlaylistId(path);
+        const parsed = JSON.parse(String(body)) as { name?: string };
+        this.record('PUT', `/playlists/${playlistId}`, parsed);
+
+        const playlist = this.findPlaylist(playlistId);
+
+        if (playlist === undefined) {
+          return { statusCode: 404, data: { error: { status: 404, message: 'Not found' } } };
+        }
+
+        if (parsed.name !== undefined) {
+          playlist.name = parsed.name;
+        }
+
+        return { statusCode: 200, data: {} };
+      })
+      .persist();
+
+    // Spotify n'offre pas de suppression : on se désabonne de la playlist,
+    // qui disparaît de /me/playlists tout en restant restaurable.
+    api
+      .intercept({ path: /^\/v1\/playlists\/[^/]+\/followers$/, method: 'DELETE' })
+      .reply(({ path }) => {
+        const playlistId = this.extractPlaylistId(path);
+        this.record('DELETE', `/playlists/${playlistId}/followers`);
+
+        const playlist = this.findPlaylist(playlistId);
+
+        if (playlist !== undefined) {
+          playlist.unfollowed = true;
+        }
+
+        return { statusCode: 200, data: {} };
+      })
+      .persist();
+
+    api
+      .intercept({ path: /^\/v1\/playlists\/[^/]+\/followers$/, method: 'PUT', body: () => true })
+      .reply(({ path }) => {
+        const playlistId = this.extractPlaylistId(path);
+        this.record('PUT', `/playlists/${playlistId}/followers`);
+
+        const playlist = this.findPlaylist(playlistId);
+
+        if (playlist !== undefined) {
+          playlist.unfollowed = false;
+        }
+
+        return { statusCode: 200, data: {} };
+      })
+      .persist();
+
     // --- Titres likés -----------------------------------------------------
     api
       .intercept({ path: /^\/v1\/me\/tracks/, method: 'GET' })
@@ -187,9 +263,11 @@ export class SpotifyMock {
       .intercept({ path: /^\/v1\/me\/playlists/, method: 'GET' })
       .reply(200, () => {
         this.record('GET', '/me/playlists');
+        const followed = this.state.playlists.filter((playlist) => !playlist.unfollowed);
+
         return {
-          items: this.state.playlists.map(toApiPlaylist),
-          total: this.state.playlists.length,
+          items: followed.map(toApiPlaylist),
+          total: followed.length,
           limit: 50,
           offset: 0,
           next: null,

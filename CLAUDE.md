@@ -44,6 +44,11 @@ positions décroissantes, transmettre le `snapshot_id`.
 déjà le titre sont cochées pour informer ; le serveur vérifie l'appartenance
 avant tout ajout. Sans cette garde, l'outil créerait les doublons qu'il élimine.
 
+**Spotify ne supprime pas les playlists.** Seul `DELETE .../followers`
+(désabonnement) existe : l'interface parle de « retirer », les playlists
+retirées restent affichées grisées et restaurables. Ne pas réintroduire le
+vocabulaire « supprimer ».
+
 **La qualification est non destructive.** Ranger un titre liké dans une
 playlist ne le retire jamais des likés : ceux-ci sont la collection de
 référence. Ne pas introduire de retrait automatique.

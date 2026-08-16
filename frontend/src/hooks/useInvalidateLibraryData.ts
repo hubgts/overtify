@@ -25,6 +25,7 @@ export function useInvalidateLibraryData(): (playlistId?: string) => Promise<voi
       queryClient.invalidateQueries({ queryKey: queryKeys.playlists, exact: true }),
       queryClient.invalidateQueries({ queryKey: queryKeys.library }),
       queryClient.invalidateQueries({ queryKey: queryKeys.qualificationQueue }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.removedPlaylists }),
       ...(playlistId === undefined
         ? []
         : [queryClient.invalidateQueries({ queryKey: queryKeys.playlistDetail(playlistId) })]),

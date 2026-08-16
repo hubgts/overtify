@@ -675,3 +675,46 @@ au moindre clic).
   likés reste intacte.
 - La route `/library/add` et son service sont supprimés, remplacés par
   `/library/sync` : pas de code mort laissé derrière.
+
+---
+
+## 27 — Retirer une playlist plutôt que la « supprimer »
+
+**Type :** métier · **Statut :** adoptée
+
+**Contexte.** Le CRUD des playlists demandait une suppression. Or **Spotify
+n'offre aucune suppression réelle** : l'API ne propose que
+`DELETE /playlists/{id}/followers`, c'est-à-dire un désabonnement. La playlist
+disparaît de `/me/playlists` mais continue d'exister.
+
+**Décision.** L'interface parle de **« retirer de la bibliothèque »**, jamais de
+supprimer. Les playlists retirées restent **affichées grisées**, avec un bouton
+« Restaurer » aussi accessible que le retrait l'était.
+
+**Motif.** Annoncer une « suppression définitive » serait faux et pourrait
+dissuader d'une action anodine. Dire la vérité — « rien n'est supprimé, un clic
+suffit à la restaurer » — est à la fois plus exact et plus rassurant.
+
+**Écarté.** Vocabulaire « Supprimer » avec avertissement fort (inexact) ; saisie
+du nom pour confirmer, façon GitHub (disproportionné pour une action
+réversible).
+
+**Conséquences.**
+
+- `/me/playlists` ne liste que les playlists **suivies** : une playlist retirée
+  en disparaît. Overtify doit donc **mémoriser lui-même** le retrait pour
+  pouvoir l'afficher grisée — d'où `removedPlaylistStore`, persisté comme la
+  mémoire de qualification.
+- La confirmation reste obligatoire, conformément à la décision n°5 : réversible
+  ne veut pas dire anodin.
+- Les **Titres likés** ne sont ni renommables ni retirables : ce n'est pas une
+  playlist. Deux tests le vérifient.
+- Le mécanisme de stockage JSON, jusque-là propre à la qualification, est
+  extrait dans `jsonStore.ts` — une seconde donnée persistante justifiait la
+  factorisation.
+- **Création** : `POST /users/{id}/playlists` renvoie désormais 403, remplacé
+  par `POST /me/playlists`. Même famille de migration que `/tracks` → `/items`
+  (cf. décision n°12) ; un test vérifie que l'ancien chemin n'est plus utilisé.
+- Les playlists sont créées **privées** par défaut, là où Spotify les crée
+  publiques : une playlist de tri n'a pas vocation à être exposée sans le
+  vouloir.

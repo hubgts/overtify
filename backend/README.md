@@ -73,6 +73,11 @@ Voir [`.env.example`](../.env.example) à la racine.
 | `GET` | `/api/auth/me` | oui | Profil de l'utilisateur connecté. |
 | `POST` | `/api/auth/logout` | — | Détruit la session. |
 | `GET` | `/api/playlists` | oui | Titres likés + playlists possédées. |
+| `POST` | `/api/playlists` | oui | Crée une playlist vide (privée par défaut). |
+| `PUT` | `/api/playlists/:id` | oui | Renomme, modifie description et visibilité. |
+| `DELETE` | `/api/playlists/:id` | oui | Retire de la bibliothèque (désabonnement, réversible). |
+| `GET` | `/api/playlists/removed` | oui | Playlists retirées, restaurables. |
+| `POST` | `/api/playlists/:id/restore` | oui | Réaffiche une playlist retirée. |
 | `GET` | `/api/playlists/:id` | oui | Détail et morceaux (toutes pages). |
 | `POST` | `/api/playlists/:id/tracks` | oui | Ajoute des morceaux. |
 | `DELETE` | `/api/playlists/:id/tracks` | oui | Retire des occurrences précises. |
@@ -113,7 +118,8 @@ src/
 │               délégation ; schemas.ts porte les schémas Zod partagés
 ├── services/   spotifyClient, spotifyAuth, sessionStore, playlistService,
 │               likedSongsService, libraryIndexService, libraryCache,
-│               qualificationService, qualificationStore, mappers
+│               qualificationService, qualificationStore, mappers,
+│               jsonStore (persistance partagée), removedPlaylistStore
 ├── types/      spotify.ts (API Spotify), dto.ts (contrat frontend)
 └── utils/      errors, cookies, httpClient, apiLogger, chunk
 ```
@@ -162,7 +168,7 @@ Choix assumé, documenté dans
 ## Tests
 
 ```bash
-npm test              # 90 tests hors ligne
+npm test              # 107 tests hors ligne
 npm run test:contract # vérifie que l'API Spotify n'a pas changé
 ```
 

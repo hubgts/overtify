@@ -1,7 +1,16 @@
 import { useEffect, useState } from 'react';
 
 import { useAuth, useLogout } from './hooks/useAuth';
-import { usePlaylists } from './hooks/usePlaylists';
+import {
+  useCreatePlaylist,
+  usePlaylists,
+  useRemovePlaylist,
+  useRemovedPlaylists,
+  useRestorePlaylist,
+  useUpdatePlaylist,
+} from './hooks/usePlaylists';
+import { PlaylistFormModal } from './components/playlist/PlaylistFormModal';
+import { RemovePlaylistModal } from './components/playlist/RemovePlaylistModal';
 import { Sidebar } from './components/layout/Sidebar';
 import { TopBar } from './components/layout/TopBar';
 import { LoginPage } from './pages/LoginPage';
@@ -10,6 +19,7 @@ import { QualifyPage } from './pages/QualifyPage';
 import { LibraryPage } from './pages/LibraryPage';
 import { LoadingBlock } from './components/ui/Spinner';
 import { ErrorState } from './components/ui/ErrorState';
+import type { PlaylistSummaryDto } from './types/api';
 
 /**
  * Lit puis efface les paramètres `auth` et `reason` posés par le backend après
@@ -45,6 +55,17 @@ export function App() {
   const [view, setView] = useState<'playlist' | 'qualify' | 'library'>('playlist');
 
   const playlistsQuery = usePlaylists(user !== null);
+  const removedQuery = useRemovedPlaylists(user !== null);
+
+  const createPlaylist = useCreatePlaylist();
+  const updatePlaylist = useUpdatePlaylist();
+  const removePlaylist = useRemovePlaylist();
+  const restorePlaylist = useRestorePlaylist();
+
+  /** Modale ouverte : création, édition d'une playlist, ou retrait. */
+  const [isCreateOpen, setCreateOpen] = useState(false);
+  const [playlistToEdit, setPlaylistToEdit] = useState<PlaylistSummaryDto | null>(null);
+  const [playlistToRemove, setPlaylistToRemove] = useState<PlaylistSummaryDto | null>(null);
 
   if (isAuthLoading) {
     return (
@@ -78,6 +99,12 @@ export function App() {
         }}
         activeTool={view === 'playlist' ? null : view}
         onOpenTool={setView}
+        onCreatePlaylist={() => setCreateOpen(true)}
+        onEditPlaylist={setPlaylistToEdit}
+        onRemovePlaylist={setPlaylistToRemove}
+        removedPlaylists={removedQuery.data ?? []}
+        onRestorePlaylist={(playlistId) => restorePlaylist.mutate(playlistId)}
+        restoringPlaylistId={restorePlaylist.isPending ? restorePlaylist.variables : null}
         isLoading={playlistsQuery.isLoading}
         error={playlistsQuery.error}
       />
@@ -95,6 +122,80 @@ export function App() {
           <PlaylistPage key={selectedPlaylistId} playlistId={selectedPlaylistId} />
         )}
       </main>
+
+      <PlaylistFormModal
+        isOpen={isCreateOpen}
+        onClose={() => setCreateOpen(false)}
+        onSubmit={(values) => {
+          createPlaylist.mutate(
+            { name: values.name, ...(values.description === '' ? {} : { description: values.description }) },
+            {
+              onSuccess: (created) => {
+                setCreateOpen(false);
+                // On ouvre la playlist créée : elle est vide, l'utilisateur
+                // veut la remplir dans la foulée.
+                setSelectedPlaylistId(created.id);
+                setView('playlist');
+              },
+            },
+          );
+        }}
+        isPending={createPlaylist.isPending}
+        error={createPlaylist.error}
+        title="Nouvelle playlist"
+        description="Elle sera créée vide et privée."
+        submitLabel="Créer"
+      />
+
+      <PlaylistFormModal
+        isOpen={playlistToEdit !== null}
+        onClose={() => setPlaylistToEdit(null)}
+        initialValues={{
+          name: playlistToEdit?.name ?? '',
+          description: playlistToEdit?.description ?? '',
+        }}
+        onSubmit={(values) => {
+          if (playlistToEdit === null) {
+            return;
+          }
+
+          updatePlaylist.mutate(
+            {
+              playlistId: playlistToEdit.id,
+              changes: { name: values.name, description: values.description },
+            },
+            { onSuccess: () => setPlaylistToEdit(null) },
+          );
+        }}
+        isPending={updatePlaylist.isPending}
+        error={updatePlaylist.error}
+        title="Renommer la playlist"
+        description="Le nom et la description sont modifiés dans Spotify."
+        submitLabel="Enregistrer"
+      />
+
+      <RemovePlaylistModal
+        playlist={playlistToRemove}
+        onClose={() => setPlaylistToRemove(null)}
+        onConfirm={() => {
+          if (playlistToRemove === null) {
+            return;
+          }
+
+          removePlaylist.mutate(playlistToRemove.id, {
+            onSuccess: () => {
+              // La playlist retirée ne doit plus rester affichée.
+              if (selectedPlaylistId === playlistToRemove.id) {
+                setSelectedPlaylistId(undefined);
+              }
+
+              setPlaylistToRemove(null);
+            },
+          });
+        }}
+        isPending={removePlaylist.isPending}
+        error={removePlaylist.error}
+      />
     </div>
   );
 }

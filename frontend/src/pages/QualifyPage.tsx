@@ -6,7 +6,9 @@ import {
   useResetQualifications,
 } from '../hooks/useQualification';
 import { formatArtists, formatDuration, pluralize } from '../services/format';
+import { useCreatePlaylist } from '../hooks/usePlaylists';
 import { PlaylistPicker } from '../components/qualify/PlaylistPicker';
+import { PlaylistFormModal } from '../components/playlist/PlaylistFormModal';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { LoadingBlock } from '../components/ui/Spinner';
@@ -28,8 +30,11 @@ export function QualifyPage() {
   const qualify = useQualifyTrack();
   const reset = useResetQualifications();
 
+  const createPlaylist = useCreatePlaylist();
+
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set());
   const [isResetOpen, setResetOpen] = useState(false);
+  const [isCreateOpen, setCreateOpen] = useState(false);
 
   const currentTrack = queue.data?.tracks[0];
 
@@ -115,9 +120,19 @@ export function QualifyPage() {
           <TrackCard track={currentTrack} />
 
           <section className="flex flex-col gap-3">
-            <h3 className="text-sm font-semibold text-content-secondary">
-              Ranger dans…
-            </h3>
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold text-content-secondary">
+                Ranger dans…
+              </h3>
+
+              {/*
+                Créer une playlist sans quitter le tri : c'est en triant qu'on
+                réalise qu'une catégorie manque.
+              */}
+              <Button size="sm" variant="ghost" onClick={() => setCreateOpen(true)}>
+                <span aria-hidden="true">+</span> Nouvelle playlist
+              </Button>
+            </div>
 
             <PlaylistPicker
               playlists={data.playlists}
@@ -166,6 +181,32 @@ export function QualifyPage() {
           </div>
         </>
       )}
+
+      <PlaylistFormModal
+        isOpen={isCreateOpen}
+        onClose={() => setCreateOpen(false)}
+        onSubmit={(values) => {
+          createPlaylist.mutate(
+            {
+              name: values.name,
+              ...(values.description === '' ? {} : { description: values.description }),
+            },
+            {
+              onSuccess: (created) => {
+                setCreateOpen(false);
+                // La playlist vient d'être créée pour ce titre : on la coche
+                // d'emblée, c'est la raison même de sa création.
+                setSelectedIds((current) => new Set(current).add(created.id));
+              },
+            },
+          );
+        }}
+        isPending={createPlaylist.isPending}
+        error={createPlaylist.error}
+        title="Nouvelle playlist"
+        description="Elle sera créée vide, puis cochée pour ce titre."
+        submitLabel="Créer"
+      />
 
       <ResetModal
         isOpen={isResetOpen}

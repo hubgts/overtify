@@ -224,3 +224,96 @@ export async function searchTracks(
 
   return { tracks: response.tracks.items.map(toTrackDto) };
 }
+
+/**
+ * Crée une playlist vide.
+ *
+ * Spotify a remplacé `POST /users/{id}/playlists` (désormais 403) par
+ * `POST /me/playlists` — même famille de migration que `/tracks` → `/items`.
+ */
+export async function createPlaylist(
+  client: SpotifyClient,
+  userId: string,
+  input: { name: string; description?: string | undefined; isPublic?: boolean | undefined },
+): Promise<PlaylistSummaryDto> {
+  const created = await client.request<SpotifyPlaylist>({
+    method: 'POST',
+    path: '/me/playlists',
+    body: {
+      name: input.name,
+      ...(input.description === undefined ? {} : { description: input.description }),
+      // Spotify crée en public par défaut ; Overtify préfère l'inverse, une
+      // playlist de tri n'ayant pas vocation à être exposée sans le vouloir.
+      public: input.isPublic ?? false,
+    },
+  });
+
+  libraryCache.invalidate(userId);
+
+  return toPlaylistSummaryDto(created);
+}
+
+/** Renomme une playlist ou modifie sa description et sa visibilité. */
+export async function updatePlaylist(
+  client: SpotifyClient,
+  playlistId: string,
+  userId: string,
+  changes: {
+    name?: string | undefined;
+    description?: string | undefined;
+    isPublic?: boolean | undefined;
+  },
+): Promise<void> {
+  await assertOwnedPlaylist(client, playlistId, userId);
+
+  await client.request<void>({
+    method: 'PUT',
+    path: `/playlists/${playlistId}`,
+    body: {
+      ...(changes.name === undefined ? {} : { name: changes.name }),
+      ...(changes.description === undefined ? {} : { description: changes.description }),
+      ...(changes.isPublic === undefined ? {} : { public: changes.isPublic }),
+    },
+  });
+
+  libraryCache.invalidate(userId);
+}
+
+/**
+ * Retire une playlist de la bibliothèque.
+ *
+ * Spotify n'offre aucune suppression réelle : on se désabonne de sa propre
+ * playlist, qui disparaît alors de `/me/playlists` tout en restant restaurable.
+ * C'est pourquoi l'interface parle de « retrait » et non de « suppression ».
+ */
+export async function removePlaylistFromLibrary(
+  client: SpotifyClient,
+  playlistId: string,
+  userId: string,
+): Promise<PlaylistSummaryDto> {
+  const playlist = await assertOwnedPlaylist(client, playlistId, userId);
+
+  await client.request<void>({
+    method: 'DELETE',
+    path: `/playlists/${playlistId}/followers`,
+  });
+
+  libraryCache.invalidate(userId);
+
+  return toPlaylistSummaryDto(playlist);
+}
+
+/** Réaffiche une playlist retirée en s'y réabonnant. */
+export async function restorePlaylistToLibrary(
+  client: SpotifyClient,
+  playlistId: string,
+  userId: string,
+): Promise<void> {
+  await client.request<void>({
+    method: 'PUT',
+    path: `/playlists/${playlistId}/followers`,
+    body: { public: false },
+  });
+
+  libraryCache.invalidate(userId);
+}

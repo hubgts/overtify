@@ -19,6 +19,8 @@ ce qu'il fait déjà bien. Et ne jamais rien modifier sans votre accord explicit
   dédoublonnage.
 - **Qualification** : trier ses titres likés un par un vers une ou plusieurs
   playlists, avec mémoire de progression et réinitialisation.
+- **Gestion des playlists** : création, renommage et retrait réversible —
+  y compris depuis l'écran de qualification, sans interrompre le tri.
 - **Bibliothèque** : voir où se trouve chaque morceau, repérer ceux présents
   dans plusieurs playlists et les likés jamais rangés — et gérer leur
   appartenance (ajout et retrait) directement depuis la vue.
@@ -103,7 +105,7 @@ librement entre les modes.)
 ### Tests
 
 ```bash
-make test           # 162 tests hors ligne : unitaires + bout en bout
+make test           # 179 tests hors ligne : unitaires + bout en bout
 make test-contract  # vérifie la vraie API Spotify (réseau requis)
 ```
 

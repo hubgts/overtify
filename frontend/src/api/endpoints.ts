@@ -3,8 +3,10 @@ import type {
   PlaylistDetailDto,
   LibraryIndexDto,
   MembershipSyncResultDto,
+  PlaylistEditDto,
   PlaylistSummaryDto,
   QualificationQueueDto,
+  RemovedPlaylistDto,
   QualifyResultDto,
   SearchResultDto,
   SnapshotDto,
@@ -44,6 +46,30 @@ export const playlistApi = {
 
   getDetail: (playlistId: string, signal?: AbortSignal): Promise<PlaylistDetailDto> =>
     apiClient.get<PlaylistDetailDto>(`/playlists/${playlistId}`, signal),
+
+  /** Crée une playlist vide (privée par défaut). */
+  create: (input: { name: string; description?: string; isPublic?: boolean }): Promise<PlaylistSummaryDto> =>
+    apiClient.post<PlaylistSummaryDto>('/playlists', input),
+
+  /** Renomme, ou modifie description et visibilité. */
+  update: (playlistId: string, changes: PlaylistEditDto): Promise<void> =>
+    apiClient.put<void>(`/playlists/${playlistId}`, changes),
+
+  /**
+   * Retire une playlist de la bibliothèque.
+   *
+   * Désabonnement et non suppression : la playlist reste restaurable.
+   */
+  remove: (playlistId: string): Promise<void> =>
+    apiClient.delete<void>(`/playlists/${playlistId}`),
+
+  /** Playlists retirées, affichées grisées. */
+  listRemoved: (signal?: AbortSignal): Promise<RemovedPlaylistDto[]> =>
+    apiClient.get<RemovedPlaylistDto[]>('/playlists/removed', signal),
+
+  /** Réaffiche une playlist retirée. */
+  restore: (playlistId: string): Promise<void> =>
+    apiClient.post<void>(`/playlists/${playlistId}/restore`),
 
   addTracks: (playlistId: string, uris: string[]): Promise<SnapshotDto> =>
     apiClient.post<SnapshotDto>(`/playlists/${playlistId}/tracks`, { uris }),

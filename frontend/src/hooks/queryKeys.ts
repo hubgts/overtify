@@ -12,4 +12,5 @@ export const queryKeys = {
   trackSearch: (query: string) => ['search', 'tracks', query] as const,
   qualificationQueue: ['qualification', 'queue'] as const,
   library: ['library'] as const,
+  removedPlaylists: ['playlists', 'removed'] as const,
 } as const;

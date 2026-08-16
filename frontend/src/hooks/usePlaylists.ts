@@ -5,7 +5,9 @@ import { queryKeys } from './queryKeys';
 import { useInvalidateLibraryData } from './useInvalidateLibraryData';
 import type {
   PlaylistDetailDto,
+  PlaylistEditDto,
   PlaylistSummaryDto,
+  RemovedPlaylistDto,
   SnapshotDto,
   TrackRemovalDto,
 } from '../types/api';
@@ -67,5 +69,62 @@ export function useRemoveTracks(playlistId: string) {
     mutationFn: ({ tracks, snapshotId }) =>
       playlistApi.removeTracks(playlistId, tracks, snapshotId),
     onSuccess: () => invalidate(playlistId),
+  });
+}
+
+/** Playlists retirées de la bibliothèque, affichées grisées. */
+export function useRemovedPlaylists(enabled: boolean): UseQueryResult<RemovedPlaylistDto[]> {
+  return useQuery({
+    queryKey: queryKeys.removedPlaylists,
+    queryFn: ({ signal }) => playlistApi.listRemoved(signal),
+    enabled,
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useCreatePlaylist() {
+  const invalidate = useInvalidateLibraryData();
+
+  return useMutation<PlaylistSummaryDto, Error, { name: string; description?: string }>({
+    mutationFn: (input) => playlistApi.create(input),
+    onSuccess: () => invalidate(),
+  });
+}
+
+export interface UpdatePlaylistInput {
+  playlistId: string;
+  changes: PlaylistEditDto;
+}
+
+export function useUpdatePlaylist() {
+  const invalidate = useInvalidateLibraryData();
+
+  return useMutation<void, Error, UpdatePlaylistInput>({
+    mutationFn: ({ playlistId, changes }) => playlistApi.update(playlistId, changes),
+    onSuccess: (_result, { playlistId }) => invalidate(playlistId),
+  });
+}
+
+/**
+ * Retire une playlist de la bibliothèque.
+ *
+ * Désabonnement et non suppression : la playlist reste restaurable, ce que
+ * l'interface doit refléter dans son vocabulaire.
+ */
+export function useRemovePlaylist() {
+  const invalidate = useInvalidateLibraryData();
+
+  return useMutation<void, Error, string>({
+    mutationFn: (playlistId) => playlistApi.remove(playlistId),
+    onSuccess: () => invalidate(),
+  });
+}
+
+export function useRestorePlaylist() {
+  const invalidate = useInvalidateLibraryData();
+
+  return useMutation<void, Error, string>({
+    mutationFn: (playlistId) => playlistApi.restore(playlistId),
+    onSuccess: () => invalidate(),
   });
 }

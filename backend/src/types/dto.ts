@@ -76,6 +76,24 @@ export interface SnapshotDto {
 
 
 
+
+/** Playlist retirée de la bibliothèque, restaurable d'un clic. */
+export interface RemovedPlaylistDto {
+  id: string;
+  name: string;
+  imageUrl: string | null;
+  trackCount: number;
+  /** Date ISO du retrait. */
+  removedAt: string;
+}
+
+/** Champs modifiables d'une playlist. */
+export interface PlaylistEditDto {
+  name?: string;
+  description?: string;
+  isPublic?: boolean;
+}
+
 /** Résultat d'une synchronisation d'appartenance. */
 export interface MembershipSyncResultDto {
   uri: string;
